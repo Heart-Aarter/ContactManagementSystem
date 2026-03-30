@@ -1,0 +1,10 @@
+//
+// Created by Codex on 2026/4/24.
+//
+
+#ifndef CONTACTMANAGEMENTSYSTEM_LARGE_MODEL_H
+#define CONTACTMANAGEMENTSYSTEM_LARGE_MODEL_H
+
+void runDeepSeekAssistant();
+
+#endif //CONTACTMANAGEMENTSYSTEM_LARGE_MODEL_H

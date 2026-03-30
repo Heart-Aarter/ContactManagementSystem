@@ -1,0 +1,7 @@
+cmake-build-*/
+.idea/
+*.iml
+deepseek_request.json
+deepseek_response.json
+data/*
+!data/.gitkeep
