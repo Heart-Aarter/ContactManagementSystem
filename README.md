@@ -107,7 +107,7 @@ data/*
 
 不要将真实 API Key 写入代码、README、截图或提交历史中。
 
-如果 API Key 曾经被提交到 GitHub，应立即在 DeepSeek 控制台重置。
+如果 API Key 曾经被提交到 GitHub，应立即在 DeepSeek 开放平台 删除该API Key。
 
 请勿提交以下内容：
 
