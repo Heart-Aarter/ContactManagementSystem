@@ -11,6 +11,8 @@
 #include <iostream>
 #include <limits>
 
+#include "global.h"
+
 using namespace std;
 
 namespace {
@@ -43,6 +45,24 @@ void readHiddenPassword(char aPwd[], int nSize) {
     printf("\n");
 }
 
+bool isAlphaNumericPassword(const char* pPwd) {
+    if (pPwd == nullptr || pPwd[0] == '\0') {
+        return false;
+    }
+
+    for (int i = 0; pPwd[i] != '\0'; i++) {
+        const unsigned char ch = (unsigned char) pPwd[i];
+        const bool isDigit = ch >= '0' && ch <= '9';
+        const bool isLower = ch >= 'a' && ch <= 'z';
+        const bool isUpper = ch >= 'A' && ch <= 'Z';
+        if (!isDigit && !isLower && !isUpper) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 }
 
 void timeToString(time_t t, char *pBuf) {
@@ -66,17 +86,23 @@ time_t stringToTime(const char *pTime) {
 
 void getPwd(char aPwd[]) {
     while (true) {
-        char aConfirmPwd[8] = {0};
-        memset(aPwd, 0, 8);
+        char aConfirmPwd[PASSWORD_LENGTH] = {0};
+        memset(aPwd, 0, PASSWORD_LENGTH);
 
-        printf("请输入密码(长度为 1~7): ");
-        readHiddenPassword(aPwd, 8);
+        printf("请输入密码(长度为 1~%d): ", PASSWORD_MAX_LENGTH);
+        readHiddenPassword(aPwd, PASSWORD_LENGTH);
 
         printf("请再次输入密码: ");
-        readHiddenPassword(aConfirmPwd, 8);
+        readHiddenPassword(aConfirmPwd, PASSWORD_LENGTH);
 
         if (strlen(aPwd) == 0) {
             printf("密码不能为空。\n");
+            system("cls");
+            continue;
+        }
+
+        if (!isAlphaNumericPassword(aPwd)) {
+            printf("密码只能包含英文字母和数字。\n");
             system("cls");
             continue;
         }
@@ -89,6 +115,12 @@ void getPwd(char aPwd[]) {
 
         break;
     }
+}
+
+void getPwdOnce(char aPwd[]) {
+    memset(aPwd, 0, PASSWORD_LENGTH);
+    printf("请输入密码(长度为 1~%d): ", PASSWORD_MAX_LENGTH);
+    readHiddenPassword(aPwd, PASSWORD_LENGTH);
 }
 
 int getSize(const char* pInput) {

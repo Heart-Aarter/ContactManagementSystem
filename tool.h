@@ -11,6 +11,7 @@ using namespace std;
 void timeToString(time_t t,char *pBuf);
 time_t stringToTime(const char *pTime);
 void getPwd(char aPwd[]);
+void getPwdOnce(char aPwd[]);
 int getSize(const char* pInput);
 void clearScreen();
 void resetInput();

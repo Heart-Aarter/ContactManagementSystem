@@ -52,7 +52,20 @@ Account* queryAllAccountInfo(int* pCount) {
         return nullptr;
     }
 
-    *pCount = nReadCount;
+    int nActiveCount = 0;
+    for (int i = 0; i < nReadCount; i++) {
+        if (pAccount[i].nDel == 0 && pAccount[i].nStatus != 2) {
+            pAccount[nActiveCount] = pAccount[i];
+            nActiveCount++;
+        }
+    }
+
+    if (nActiveCount == 0) {
+        free(pAccount);
+        return nullptr;
+    }
+
+    *pCount = nActiveCount;
     return pAccount;
 }
 

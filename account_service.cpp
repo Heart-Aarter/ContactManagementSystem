@@ -15,6 +15,56 @@ using namespace std;
 
 lpAccountNode accountList = nullptr;
 
+namespace {
+
+typedef struct LegacyAccount {
+    char aName[18];
+    char aPwd[8];
+    int nStatus;
+    time_t tStart;
+    time_t tEnd;
+    float fBalance;
+    float fTotalPoints;
+    float fTotalDuration;
+    time_t tLast;
+    int nUseCount;
+    int nDel;
+} LegacyAccount;
+
+bool isLegacyShiftedAccount(const Account& account) {
+    LegacyAccount legacy{};
+    memcpy(&legacy, &account, sizeof(LegacyAccount));
+
+    if (legacy.aName[0] == '\0' || legacy.aPwd[0] == '\0') {
+        return false;
+    }
+
+    return strcmp(account.aName, legacy.aName) == 0
+        && strcmp(account.aPwd, legacy.aPwd + 1) == 0;
+}
+
+bool matchPassword(Account& account, const char* pPwd) {
+    if (isLegacyShiftedAccount(account)) {
+        LegacyAccount legacy{};
+        memcpy(&legacy, &account, sizeof(LegacyAccount));
+        if (strcmp(legacy.aPwd, pPwd) != 0) {
+            return false;
+        }
+
+        memset(account.aPwd, 0, sizeof(account.aPwd));
+        strncpy(account.aPwd, legacy.aPwd, PASSWORD_MAX_LENGTH);
+        return true;
+    }
+
+    return strcmp(account.aPwd, pPwd) == 0;
+}
+
+bool isActiveAccount(const Account& account) {
+    return account.nDel == 0 && account.nStatus != 2;
+}
+
+}
+
 /******************************************
  [函数名]queryAccounts
  [作用]在志愿者信息链表中，查询账号号相同的志愿者信息
@@ -42,7 +92,7 @@ Account* queryAccounts(const char* pName,int* pIndex) {
     *pIndex = 0;
     node = accountList->next;
     while (node != nullptr) {
-        if (strcmp(node->data.aName, pName) == 0) {
+        if (strcmp(node->data.aName, pName) == 0 && isActiveAccount(node->data)) {
             pAccount[*pIndex] = node->data;
             (*pIndex)++;
             auto *temp = (Account *) realloc(pAccount, ((*pIndex) + 1) * sizeof(Account));
@@ -193,14 +243,20 @@ Account* checkAccount(const char* pName, const char* pPwd, int* pIndex) {
     lpAccountNode accountNode=nullptr;
     int nIndex=0;
 
+    if (pName == nullptr || pPwd == nullptr || pIndex == nullptr) {
+        return nullptr;
+    }
+
     if (FALSE == getAccount()) {
-        return FALSE;
+        return nullptr;
     }
 
     accountNode = accountList->next;
 
     while (accountNode != nullptr) {
-        if ((strcmp(accountNode->data.aName, pName) == 0) && (strcmp(accountNode->data.aPwd, pPwd) == 0)) {
+        if ((strcmp(accountNode->data.aName, pName) == 0)
+            && accountNode->data.nDel == 0
+            && matchPassword(accountNode->data, pPwd)) {
             *pIndex = nIndex;
             return &accountNode->data;
         }

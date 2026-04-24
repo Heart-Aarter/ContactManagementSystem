@@ -3,6 +3,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 #include "global.h"
 #include "large_model.h"
@@ -15,8 +16,8 @@ using namespace std;
 namespace {
 
 bool validateNameLength(const char* pName) {
-    if (getSize(pName) >= 18) {
-        cout << "账号长度不能超过 17 个字符。" << endl;
+    if (getSize(pName) > ACCOUNT_NAME_MAX_LENGTH) {
+        cout << "账号长度不能超过 " << ACCOUNT_NAME_MAX_LENGTH << " 个字符。" << endl;
         finishPage();
         return false;
     }
@@ -24,11 +25,60 @@ bool validateNameLength(const char* pName) {
 }
 
 bool validatePasswordLength(const char* pPwd) {
-    if (getSize(pPwd) >= 8) {
-        cout << "密码长度不能超过 7 个字符。" << endl;
+    if (getSize(pPwd) > PASSWORD_MAX_LENGTH) {
+        cout << "密码长度不能超过 " << PASSWORD_MAX_LENGTH << " 个字符。" << endl;
         finishPage();
         return false;
     }
+    return true;
+}
+
+bool validatePasswordContent(const char* pPwd) {
+    if (pPwd == nullptr || pPwd[0] == '\0') {
+        cout << "密码不能为空。" << endl;
+        finishPage();
+        return false;
+    }
+
+    for (int i = 0; pPwd[i] != '\0'; i++) {
+        const unsigned char ch = (unsigned char) pPwd[i];
+        const bool isDigit = ch >= '0' && ch <= '9';
+        const bool isLower = ch >= 'a' && ch <= 'z';
+        const bool isUpper = ch >= 'A' && ch <= 'Z';
+        if (!isDigit && !isLower && !isUpper) {
+            cout << "密码只能包含英文字母和数字。" << endl;
+            finishPage();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool validatePassword(const char* pPwd) {
+    return validatePasswordLength(pPwd) && validatePasswordContent(pPwd);
+}
+
+bool inputBoundedText(const char* pPrompt, char* pOutput, int nOutputSize, int nMaxLength) {
+    string input;
+    cout << pPrompt;
+    cin >> input;
+
+    if (!cin || input.empty()) {
+        resetInput();
+        cout << "输入不能为空。" << endl;
+        finishPage();
+        return false;
+    }
+
+    if ((int) input.size() > nMaxLength) {
+        cout << "输入长度不能超过 " << nMaxLength << " 个字符。" << endl;
+        finishPage();
+        return false;
+    }
+
+    memset(pOutput, 0, nOutputSize);
+    strncpy(pOutput, input.c_str(), nOutputSize - 1);
     return true;
 }
 
@@ -38,25 +88,36 @@ void printUnavailableFeature(const char* pTitle) {
     finishPage();
 }
 
-void inputAccountAndPassword(char* pName, int nNameSize, char* pPwd, int nPwdSize) {
-    cout << "请输入志愿者账号(长度为 1~17): ";
-    cin >> setw(nNameSize) >> pName;
+bool inputAccountAndPassword(char* pName, int nNameSize, char* pPwd, int nPwdSize) {
+    const string namePrompt = "请输入志愿者账号(长度为 1~" + to_string(ACCOUNT_NAME_MAX_LENGTH) + "): ";
+    if (!inputBoundedText(namePrompt.c_str(), pName, nNameSize, ACCOUNT_NAME_MAX_LENGTH)) {
+        return false;
+    }
 
-    cout << "请输入密码(长度为 1~7): ";
-    cin >> setw(nPwdSize) >> pPwd;
+    getPwdOnce(pPwd);
+    return validatePassword(pPwd);
 }
 
 void printAccountTable(const Account* pAccount, int nCount) {
     char aLastTime[TIMELENGTH] = {0};
 
-    cout << "账号\t状态\t当前积分\t累计积分\t累计时长\t最后操作时间" << endl;
+    const int nNameColumnWidth = ACCOUNT_NAME_MAX_LENGTH + 4;
+
+    cout << left
+         << setw(nNameColumnWidth) << "账号"
+         << setw(8) << "状态"
+         << setw(12) << "当前积分"
+         << setw(12) << "累计积分"
+         << setw(12) << "累计时长"
+         << "最后操作时间" << endl;
     for (int i = 0; i < nCount; i++) {
         timeToString(pAccount[i].tLast, aLastTime);
-        cout << pAccount[i].aName << '\t'
-             << pAccount[i].nStatus << '\t'
-             << pAccount[i].fBalance << '\t'
-             << pAccount[i].fTotalPoints << '\t'
-             << pAccount[i].fTotalDuration << '\t'
+        cout << left
+             << setw(nNameColumnWidth) << pAccount[i].aName
+             << setw(8) << pAccount[i].nStatus
+             << setw(12) << pAccount[i].fBalance
+             << setw(12) << pAccount[i].fTotalPoints
+             << setw(12) << pAccount[i].fTotalDuration
              << aLastTime << endl;
     }
 }
@@ -82,20 +143,19 @@ void outputMenu() {
 void add() {
     showPageHeader("注册志愿者");
 
-    char aName[18] = {0};
-    char aPwd[8] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
     Account account{};
     Account* pAccount = nullptr;
     int nIndex = 0;
 
-    cout << "请输入志愿者账号(长度为 1~17): ";
-    cin >> setw(sizeof(aName)) >> aName;
-    if (!validateNameLength(aName)) {
+    const string namePrompt = "请输入志愿者账号(长度为 1~" + to_string(ACCOUNT_NAME_MAX_LENGTH) + "): ";
+    if (!inputBoundedText(namePrompt.c_str(), aName, sizeof(aName), ACCOUNT_NAME_MAX_LENGTH)) {
         return;
     }
 
     getPwd(aPwd);
-    if (!validatePasswordLength(aPwd)) {
+    if (!validatePassword(aPwd)) {
         return;
     }
 
@@ -135,7 +195,7 @@ void add() {
 void query() {
     showPageHeader("查询志愿者");
 
-    char aName[18] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
     Account* pAccount = nullptr;
     int nCount = 0;
     int nMode = 0;
@@ -172,9 +232,7 @@ void query() {
         return;
     }
 
-    cout << "请输入要查询的志愿者账号: ";
-    cin >> setw(sizeof(aName)) >> aName;
-    if (!validateNameLength(aName)) {
+    if (!inputBoundedText("请输入要查询的志愿者账号: ", aName, sizeof(aName), ACCOUNT_NAME_MAX_LENGTH)) {
         return;
     }
 
@@ -195,13 +253,12 @@ void query() {
 void logon() {
     showPageHeader("开始服务");
 
-    char aName[18] = {0};
-    char aPwd[8] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
     Start info{};
     char aTime[TIMELENGTH] = {0};
 
-    inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd));
-    if (!validateNameLength(aName) || !validatePasswordLength(aPwd)) {
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
         return;
     }
 
@@ -236,14 +293,13 @@ void logon() {
 void settle() {
     showPageHeader("结束服务");
 
-    char aName[18] = {0};
-    char aPwd[8] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
     End info{};
     char aStartTime[TIMELENGTH] = {0};
     char aEndTime[TIMELENGTH] = {0};
 
-    inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd));
-    if (!validateNameLength(aName) || !validatePasswordLength(aPwd)) {
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
         return;
     }
 
@@ -281,13 +337,12 @@ void settle() {
 void addPoint() {
     showPageHeader("获取积分");
 
-    char aName[18] = {0};
-    char aPwd[8] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
     float fAmount = 0;
     PointChangeRecord pointInfo{};
 
-    inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd));
-    if (!validateNameLength(aName) || !validatePasswordLength(aPwd)) {
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
         return;
     }
 
@@ -309,9 +364,13 @@ void addPoint() {
             cout << "获取积分失败，请检查账号、密码和账号状态。" << endl;
             break;
         case TRUE:
-            cout << "账号\t本次获取积分\t当前积分" << endl;
-            cout << pointInfo.aAccountName << '\t'
-                 << pointInfo.fChange << "\t\t"
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << "账号"
+                 << setw(16) << "本次获取积分"
+                 << "当前积分" << endl;
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << pointInfo.aAccountName
+                 << setw(16) << pointInfo.fChange
                  << pointInfo.fBalance << endl;
             break;
         case UNUSE:
@@ -328,13 +387,12 @@ void addPoint() {
 void usePoint() {
     showPageHeader("使用积分");
 
-    char aName[18] = {0};
-    char aPwd[8] = {0};
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
     float fAmount = 0;
     PointChangeRecord pointInfo{};
 
-    inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd));
-    if (!validateNameLength(aName) || !validatePasswordLength(aPwd)) {
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
         return;
     }
 
@@ -356,9 +414,13 @@ void usePoint() {
             cout << "使用积分失败，请检查账号和密码。" << endl;
             break;
         case TRUE:
-            cout << "账号\t本次使用积分\t剩余积分" << endl;
-            cout << pointInfo.aAccountName << '\t'
-                 << pointInfo.fChange << "\t\t"
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << "账号"
+                 << setw(16) << "本次使用积分"
+                 << "剩余积分" << endl;
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << pointInfo.aAccountName
+                 << setw(16) << pointInfo.fChange
                  << pointInfo.fBalance << endl;
             cout << "积分折合为 " << pointInfo.fChange / 10.0f << " 元，已捐赠。" << endl;
             break;
@@ -390,8 +452,7 @@ void annul() {
     Account account{};
     char cConfirm = '\0';
 
-    inputAccountAndPassword(account.aName, sizeof(account.aName), account.aPwd, sizeof(account.aPwd));
-    if (!validateNameLength(account.aName) || !validatePasswordLength(account.aPwd)) {
+    if (!inputAccountAndPassword(account.aName, sizeof(account.aName), account.aPwd, sizeof(account.aPwd))) {
         return;
     }
 
@@ -411,8 +472,12 @@ void annul() {
             cout << "注销账号失败，请检查账号和密码。" << endl;
             break;
         case TRUE:
-            cout << "账号\t退还积分" << endl;
-            cout << account.aName << '\t' << account.fBalance << endl;
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << "账号"
+                 << "退还积分" << endl;
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << account.aName
+                 << account.fBalance << endl;
             break;
         case UNUSE:
             cout << "该账号正在服务或已注销，无法注销。" << endl;
