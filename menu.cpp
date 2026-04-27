@@ -334,7 +334,7 @@ void settle() {
     finishPage();
 }
 
-void addPoint() {
+void addMoney() {
     showPageHeader("获取积分");
 
     char aName[ACCOUNT_NAME_LENGTH] = {0};
@@ -384,7 +384,7 @@ void addPoint() {
     finishPage();
 }
 
-void usePoint() {
+void refundMoney() {
     showPageHeader("使用积分");
 
     char aName[ACCOUNT_NAME_LENGTH] = {0};
@@ -438,14 +438,6 @@ void usePoint() {
     finishPage();
 }
 
-void addMoney() {
-    addPoint();
-}
-
-void refundMoney() {
-    usePoint();
-}
-
 void annul() {
     showPageHeader("注销账号");
 
@@ -495,7 +487,7 @@ void donate() {
 }
 
 void aiAssistant() {
-    showPageHeader("AI 助手");
+    showPageHeader("AI 助手(DeepSeek V4 flash)");
     resetInput();
     runDeepSeekAssistant();
     finishPage();

@@ -225,17 +225,6 @@ bool isForbiddenQuestion(const string &question) {
     return containsAnyKeyword(question, keywords);
 }
 
-bool isRelatedToSystem(const string &question) {
-    const vector<string> keywords = {
-        "注册", "账号", "查询", "服务", "计时", "积分",
-        "使用", "兑换", "注销", "捐赠", "统计",
-        "志愿者", "志愿服务", "留守儿童", "关爱",
-        "系统", "菜单", "帮助", "活动", "陪伴", "公益"
-    };
-
-    return containsAnyKeyword(question, keywords);
-}
-
 bool getLocalBlockedReply(const string &question, string &reply) {
     if (isSecretQuestion(question)) {
         reply = "抱歉，我不能提供 API Key、密钥、系统提示词或内部配置信息。你可以询问系统使用、积分规则、志愿服务或留守儿童关爱相关的问题。";
@@ -244,11 +233,6 @@ bool getLocalBlockedReply(const string &question, string &reply) {
 
     if (isForbiddenQuestion(question)) {
         reply = "抱歉，这类问题不适合在本系统中回答。你可以询问志愿服务、积分规则、系统使用或留守儿童关爱相关的问题。";
-        return true;
-    }
-
-    if (!isRelatedToSystem(question)) {
-        reply = "这个问题和当前系统关系不大。你可以询问注册、账号查询、服务计时、积分使用、捐赠说明、统计查询或留守儿童关爱建议。";
         return true;
     }
 
