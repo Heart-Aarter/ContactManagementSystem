@@ -64,14 +64,19 @@ int getPointCount(const char* pPath) {
         return 0;
     }
 
-    int nCount = 0;
-    PointChange point{};
-    while (fread(&point, sizeof(PointChange), 1, fp) == 1) {
-        nCount++;
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    const long lSize = ftell(fp);
+    if (lSize < 0) {
+        fclose(fp);
+        return 0;
     }
 
     fclose(fp);
-    return nCount;
+    return (int) (lSize / (long) sizeof(PointChange));
 }
 
 int readPoint(PointChange* pPoint, const char* pPath) {

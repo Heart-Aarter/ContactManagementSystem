@@ -47,57 +47,55 @@ int saveTracking(const Tracking* pTracking, const char* pPath) {
 int updateTracking(const Tracking *pTracking, const char *pPath, int nIndex) {
     FILE *fp = nullptr;
     int nCount = getTrackingCount(pPath);
-    Tracking *pAllTracking = nullptr;
-    int i = 0;
+    const long lPosition = (long) nIndex * (long) sizeof(Tracking);
 
-    if (nCount == 0 || nIndex >= nCount) {
+    if (pTracking == nullptr || pPath == nullptr || nCount == 0 || nIndex < 0 || nIndex >= nCount) {
         return FALSE;
     }
 
-    pAllTracking = (Tracking*) malloc(sizeof(Tracking) * nCount);
-    if (pAllTracking == nullptr) {
+    if ((fp = openResolvedFile(pPath, "rb+")) == nullptr) {
         return FALSE;
     }
 
-    if (readTracking(pAllTracking, pPath) == FALSE) {
-        free(pAllTracking);
+    if (fseek(fp, lPosition, SEEK_SET) != 0) {
+        fclose(fp);
         return FALSE;
     }
 
-    pAllTracking[nIndex] = *pTracking;
-
-    if ((fp = openResolvedFile(pPath, "wb")) == nullptr) {
-        free(pAllTracking);
+    if (fwrite(pTracking, sizeof(Tracking), 1, fp) != 1) {
+        fclose(fp);
         return FALSE;
-    }
-
-    for (i = 0; i < nCount; i++) {
-        if (fwrite(&pAllTracking[i], sizeof(Tracking), 1, fp) != 1) {
-            fclose(fp);
-            free(pAllTracking);
-            return FALSE;
-        }
     }
 
     fclose(fp);
-    free(pAllTracking);
     return TRUE;
 }
 
 int getTrackingCount(const char *pPath) {
     FILE *fp = nullptr;
-    int nCount = 0;
-    Tracking tracking{};
+    long lSize = 0;
+
+    if (pPath == nullptr) {
+        return 0;
+    }
 
     if ((fp = openResolvedFile(pPath, "rb")) == nullptr) {
         return 0;
     }
 
-    while (fread(&tracking, sizeof(Tracking), 1, fp) == 1) {
-        nCount++;
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fclose(fp);
+        return 0;
     }
+
+    lSize = ftell(fp);
+    if (lSize < 0) {
+        fclose(fp);
+        return 0;
+    }
+
     fclose(fp);
-    return nCount;
+    return (int) (lSize / (long) sizeof(Tracking));
 }
 
 int readTracking(Tracking *pTracking, const char *pPath) {
@@ -121,5 +119,5 @@ int readTracking(Tracking *pTracking, const char *pPath) {
     }
 
     fclose(fp);
-    return TRUE;
+    return nCount;
 }

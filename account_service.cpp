@@ -74,42 +74,59 @@ bool isActiveAccount(const Account& account) {
 ******************************************/
 
 Account* queryAccounts(const char* pName,int* pIndex) {
-    lpAccountNode node = nullptr;
-    Account *pAccount = nullptr;
+    Account *pAccounts = nullptr;
+    Account *pResult = nullptr;
+    int nCount = 0;
+    int nReadCount = 0;
+    int nMatchCount = 0;
 
-    if (getAccount() == FALSE) {
-        return nullptr;
-    }
-    if (accountList == nullptr || accountList->next == nullptr) {
-        return nullptr;
-    }
-
-    pAccount = (Account *) malloc(sizeof(Account));
-    if (pAccount == nullptr) {
+    if (pName == nullptr || pIndex == nullptr) {
         return nullptr;
     }
 
     *pIndex = 0;
-    node = accountList->next;
-    while (node != nullptr) {
-        if (strcmp(node->data.aName, pName) == 0 && isActiveAccount(node->data)) {
-            pAccount[*pIndex] = node->data;
-            (*pIndex)++;
-            auto *temp = (Account *) realloc(pAccount, ((*pIndex) + 1) * sizeof(Account));
-            if (temp == nullptr) {
-                free(pAccount);
-                return nullptr;
-            }
-            pAccount = temp;
-        }
-        node = node->next;
-    }
-
-    if (*pIndex == 0) {
-        free(pAccount);
+    nCount = getAccountCount(ACCOUNTPATH);
+    if (nCount <= 0) {
         return nullptr;
     }
-    return pAccount;
+
+    pAccounts = (Account *) malloc(sizeof(Account) * nCount);
+    if (pAccounts == nullptr) {
+        return nullptr;
+    }
+
+    nReadCount = readAccount(pAccounts, ACCOUNTPATH);
+    if (nReadCount <= 0) {
+        free(pAccounts);
+        return nullptr;
+    }
+
+    for (int i = 0; i < nReadCount; i++) {
+        if (strcmp(pAccounts[i].aName, pName) == 0 && isActiveAccount(pAccounts[i])) {
+            nMatchCount++;
+        }
+    }
+
+    if (nMatchCount == 0) {
+        free(pAccounts);
+        return nullptr;
+    }
+
+    pResult = (Account *) malloc(sizeof(Account) * nMatchCount);
+    if (pResult == nullptr) {
+        free(pAccounts);
+        return nullptr;
+    }
+
+    for (int i = 0; i < nReadCount; i++) {
+        if (strcmp(pAccounts[i].aName, pName) == 0 && isActiveAccount(pAccounts[i])) {
+            pResult[*pIndex] = pAccounts[i];
+            (*pIndex)++;
+        }
+    }
+
+    free(pAccounts);
+    return pResult;
 }
 
 /******************************************
@@ -240,29 +257,42 @@ bool addAccount(Account account) {
 *************************************************/
 
 Account* checkAccount(const char* pName, const char* pPwd, int* pIndex) {
-    lpAccountNode accountNode=nullptr;
-    int nIndex=0;
+    static Account account;
+    Account* pAccounts = nullptr;
+    int nCount = 0;
+    int nReadCount = 0;
 
     if (pName == nullptr || pPwd == nullptr || pIndex == nullptr) {
         return nullptr;
     }
 
-    if (FALSE == getAccount()) {
+    nCount = getAccountCount(ACCOUNTPATH);
+    if (nCount <= 0) {
         return nullptr;
     }
 
-    accountNode = accountList->next;
-
-    while (accountNode != nullptr) {
-        if ((strcmp(accountNode->data.aName, pName) == 0)
-            && accountNode->data.nDel == 0
-            && matchPassword(accountNode->data, pPwd)) {
-            *pIndex = nIndex;
-            return &accountNode->data;
-        }
-        accountNode = accountNode->next;
-        nIndex++;
+    pAccounts = (Account*) malloc(sizeof(Account) * nCount);
+    if (pAccounts == nullptr) {
+        return nullptr;
     }
 
+    nReadCount = readAccount(pAccounts, ACCOUNTPATH);
+    if (nReadCount <= 0) {
+        free(pAccounts);
+        return nullptr;
+    }
+
+    for (int i = 0; i < nReadCount; i++) {
+        if ((strcmp(pAccounts[i].aName, pName) == 0)
+            && pAccounts[i].nDel == 0
+            && matchPassword(pAccounts[i], pPwd)) {
+            account = pAccounts[i];
+            *pIndex = i;
+            free(pAccounts);
+            return &account;
+        }
+    }
+
+    free(pAccounts);
     return nullptr;
 }

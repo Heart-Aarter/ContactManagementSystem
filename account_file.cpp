@@ -109,8 +109,7 @@ bool saveAccount(const Account* pAccount,const char* pPath) {
 
 int getAccountCount(const char* pPath) {
     FILE* pFile=nullptr;
-    Account account;
-    int count=0;
+    long lSize = 0;
 
     if (pPath == nullptr) {
         return FALSE;
@@ -121,12 +120,19 @@ int getAccountCount(const char* pPath) {
         return FALSE;
     }
 
-    while (fread(&account,sizeof(Account),1,pFile) == 1) {
-        count++;
+    if (fseek(pFile, 0, SEEK_END) != 0) {
+        fclose(pFile);
+        return FALSE;
+    }
+
+    lSize = ftell(pFile);
+    if (lSize < 0) {
+        fclose(pFile);
+        return FALSE;
     }
 
     fclose(pFile);
-    return count;
+    return (int) (lSize / (long) sizeof(Account));
 }
 
 /******************************************
@@ -169,34 +175,32 @@ int readAccount(Account* pAccount,const char* pPath) {
 *************************************************/
 
 bool updateAccount(const Account* pAccount, const char* pPath, int nIndex) {
-    FILE *fp = nullptr; // 文件指针
-    int nLine = 0; // 文件志愿者信息数
-    long lPosition = 0; // 文件位置标记
-    Account bBuf;
+    FILE* fp = nullptr;
+    const long lPosition = (long) nIndex * (long) sizeof(Account);
 
-    // 以读写模式打开文件，如果失败，返回FALSE
-    if ((fp = openResolvedFile(pPath, "rb+")) == nullptr) {
+    if (pAccount == nullptr || pPath == nullptr || nIndex < 0) {
         return FALSE;
     }
 
-    // 遍历文件
-    while((!feof(fp)) && (nLine < nIndex)) {
-          // 逐行读取文件内容
-          if(fread(&bBuf, sizeof(Account), 1, fp) != 0)
-          {
-              // 获取文件标识位置
-              lPosition = ftell(fp);
-              nLine++;
-          }
+    if (nIndex >= getAccountCount(pPath)) {
+        return FALSE;
     }
 
-    // 移到文件标识位置
-    fseek(fp, lPosition, 0);
+    fp = openResolvedFile(pPath, "rb+");
+    if (fp == nullptr) {
+        return FALSE;
+    }
 
-    fwrite(pAccount, sizeof(Account), 1, fp);
+    if (fseek(fp, lPosition, SEEK_SET) != 0) {
+        fclose(fp);
+        return FALSE;
+    }
 
-    // 关闭文件
+    if (fwrite(pAccount, sizeof(Account), 1, fp) != 1) {
+        fclose(fp);
+        return FALSE;
+    }
+
     fclose(fp);
-
     return TRUE;
 }

@@ -143,27 +143,41 @@ int endService(const char* pName, const char* pPwd, End* pInfo) {
 ***************************************************************/
 
 Tracking* queryTracking(const char* pName, int* pIndex) {
-    lpTrackingNode node = nullptr;
-    int nIndex = 0;
+    static Tracking tracking;
+    Tracking* pTracking = nullptr;
+    int nCount = 0;
+    int nReadCount = 0;
 
-    if(FALSE == loadTracking())
-    {
+    if (pName == nullptr || pIndex == nullptr) {
         return nullptr;
     }
 
-    node = trackingList->next;
-    while(node != nullptr)
-    {
-        if(strcmp(node->data.aName, pName) == 0 && node->data.nStatus == 0)
-        {
-            return &node->data;
-        }
-
-        node = node->next;
-        nIndex++;
-        *pIndex = nIndex;
+    nCount = getTrackingCount(TRACKINGPATH);
+    if (nCount <= 0) {
+        return nullptr;
     }
 
+    pTracking = (Tracking*) malloc(sizeof(Tracking) * nCount);
+    if (pTracking == nullptr) {
+        return nullptr;
+    }
+
+    nReadCount = readTracking(pTracking, TRACKINGPATH);
+    if (nReadCount <= 0) {
+        free(pTracking);
+        return nullptr;
+    }
+
+    for (int i = 0; i < nReadCount; i++) {
+        if(strcmp(pTracking[i].aName, pName) == 0 && pTracking[i].nStatus == 0) {
+            tracking = pTracking[i];
+            *pIndex = i;
+            free(pTracking);
+            return &tracking;
+        }
+    }
+
+    free(pTracking);
     return nullptr;
 }
 
