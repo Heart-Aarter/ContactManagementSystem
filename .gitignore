@@ -3,5 +3,7 @@ cmake-build-*/
 *.iml
 deepseek_request.json
 deepseek_response.json
+HELP.md
+2026程序综合设计实验报告.docx
 data/*
 !data/.gitkeep

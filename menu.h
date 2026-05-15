@@ -18,5 +18,8 @@ void annul();
 void donate();
 void aiAssistant();
 void statistics();
+void serviceRecords();
+void pointRecords();
+void helpPage();
 void exitApp();
 #endif //CONTACTMANAGEMENTSYSTEM_MENU_H

@@ -15,6 +15,107 @@
 
 using namespace std;
 
+bool readMenuSelection(const char* pPrompt, int nMin, int nMax, int* pSelection) {
+    int nValue = 0;
+
+    if (pSelection == nullptr) {
+        return false;
+    }
+
+    cout << pPrompt;
+    if (!(cin >> nValue)) {
+        resetInput();
+        cout << endl << "输入无效，请输入数字。" << endl;
+        return false;
+    }
+
+    if (nValue < nMin || nValue > nMax) {
+        cout << endl << "选择不存在，请输入 " << nMin << "~" << nMax << " 之间的数字。" << endl;
+        return false;
+    }
+
+    *pSelection = nValue;
+    return true;
+}
+
+bool readPositiveFloat(const char* pPrompt, float* pValue, const char* pValueName) {
+    float fValue = 0.0f;
+
+    if (pValue == nullptr) {
+        return false;
+    }
+
+    cout << pPrompt;
+    if (!(cin >> fValue)) {
+        resetInput();
+        cout << endl << pValueName << "必须输入数字。" << endl;
+        return false;
+    }
+
+    if (fValue <= 0) {
+        cout << endl << pValueName << "必须大于 0。" << endl;
+        return false;
+    }
+
+    *pValue = fValue;
+    return true;
+}
+
+bool confirmAction(const char* pPrompt) {
+    char cConfirm = '\0';
+
+    cout << pPrompt << "(Y/N): ";
+    cin >> cConfirm;
+    return cConfirm == 'Y' || cConfirm == 'y';
+}
+
+const char* accountStatusText(int nStatus, int nDel) {
+    if (nDel != 0 || nStatus == 2) {
+        return "已注销";
+    }
+    if (nStatus == 1) {
+        return "服务中";
+    }
+    if (nStatus == 0) {
+        return "正常";
+    }
+    return "未知";
+}
+
+const char* trackingStatusText(int nStatus) {
+    if (nStatus == 0) {
+        return "进行中";
+    }
+    if (nStatus == 1) {
+        return "已完成";
+    }
+    return "未知";
+}
+
+const char* pointStatusText(int nStatus) {
+    if (nStatus == 0) {
+        return "获取积分";
+    }
+    if (nStatus == 1) {
+        return "使用积分";
+    }
+    if (nStatus == 2) {
+        return "物资捐赠";
+    }
+    return "未知";
+}
+
+void printDivider() {
+    cout << "------------------------------------------------------------" << endl;
+}
+
+void printEmptyHint(const char* pEmptyText, const char* pNextStep) {
+    cout << pEmptyText << endl;
+    if (pNextStep != nullptr && pNextStep[0] != '\0') {
+        cout << "建议: " << pNextStep << endl;
+    }
+}
+
 namespace {
 
 void readHiddenPassword(char aPwd[], int nSize) {

@@ -16,7 +16,7 @@ int main() {
         clearScreen();
         outputMenu();
 
-        if (cin >> nSelection) {
+        if (readMenuSelection("请选择操作(0~13): ", 0, 13, &nSelection)) {
             switch (nSelection) {
                 case 1:
                     add();
@@ -48,17 +48,22 @@ int main() {
                 case 10:
                     statistics();
                     break;
+                case 11:
+                    serviceRecords();
+                    break;
+                case 12:
+                    pointRecords();
+                    break;
+                case 13:
+                    helpPage();
+                    break;
                 case 0:
                     exitApp();
                     break;
                 default:
-                    cout << endl << "输入有误，请输入 0~10 之间的数字。" << endl;
-                    finishPage();
                     break;
             }
         } else {
-            resetInput();
-            cout << endl << "输入有误，请输入 0~10 之间的数字。" << endl;
             finishPage();
         }
     } while (nSelection != 0);
