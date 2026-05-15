@@ -17,5 +17,9 @@ int doRefundPointInfo(const char* pName, const char* pPwd, PointChangeRecord* pP
 int doDonatePointInfo(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
 int annulAccount(Account* pAccount);
 int getStatisticsInfo(StatisticsInfo* pInfo);
+Tracking* queryAllTrackingInfo(int* pCount);
+Tracking* queryTrackingInfoByAccount(const char* pName, int* pCount);
+PointChange* queryAllPointChangeInfo(int* pCount);
+PointChange* queryPointChangeInfoByAccount(const char* pName, int* pCount);
 
 #endif //CONTACTMANAGEMENTSYSTEM_SERVICE_H

@@ -5,6 +5,7 @@
 #include "service.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 #include "account_file.h"
@@ -178,12 +179,13 @@ int getStatisticsInfo(StatisticsInfo* pInfo)
 
         const int nReadCount = readAccount(pAccounts, ACCOUNTPATH);
         if (nReadCount > 0) {
-            pInfo->nAccountCount = nReadCount;
             for (int i = 0; i < nReadCount; i++) {
                 if (pAccounts[i].nStatus == 0 && pAccounts[i].nDel == 0) {
                     pInfo->nNormalAccountCount++;
+                    pInfo->nAccountCount++;
                 } else if (pAccounts[i].nStatus == 1 && pAccounts[i].nDel == 0) {
                     pInfo->nServingAccountCount++;
+                    pInfo->nAccountCount++;
                 } else if (pAccounts[i].nStatus == 2 || pAccounts[i].nDel != 0) {
                     pInfo->nAnnulledAccountCount++;
                 }
@@ -253,4 +255,174 @@ int getStatisticsInfo(StatisticsInfo* pInfo)
     }
 
     return TRUE;
+}
+
+Tracking* queryAllTrackingInfo(int* pCount)
+{
+    if (pCount == nullptr) {
+        return nullptr;
+    }
+
+    *pCount = 0;
+    const int nCount = getTrackingCount(TRACKINGPATH);
+    if (nCount <= 0) {
+        return nullptr;
+    }
+
+    Tracking* pTracking = (Tracking*) malloc(sizeof(Tracking) * nCount);
+    if (pTracking == nullptr) {
+        return nullptr;
+    }
+
+    const int nReadCount = readTracking(pTracking, TRACKINGPATH);
+    if (nReadCount <= 0) {
+        free(pTracking);
+        return nullptr;
+    }
+
+    int nActiveCount = 0;
+    for (int i = 0; i < nReadCount; i++) {
+        if (pTracking[i].nDel == 0) {
+            pTracking[nActiveCount] = pTracking[i];
+            nActiveCount++;
+        }
+    }
+
+    if (nActiveCount == 0) {
+        free(pTracking);
+        return nullptr;
+    }
+
+    *pCount = nActiveCount;
+    return pTracking;
+}
+
+Tracking* queryTrackingInfoByAccount(const char* pName, int* pCount)
+{
+    if (pName == nullptr || pCount == nullptr) {
+        return nullptr;
+    }
+
+    int nAllCount = 0;
+    Tracking* pAllTracking = queryAllTrackingInfo(&nAllCount);
+    if (pAllTracking == nullptr || nAllCount <= 0) {
+        return nullptr;
+    }
+
+    int nMatchCount = 0;
+    for (int i = 0; i < nAllCount; i++) {
+        if (strcmp(pAllTracking[i].aName, pName) == 0) {
+            nMatchCount++;
+        }
+    }
+
+    if (nMatchCount == 0) {
+        free(pAllTracking);
+        *pCount = 0;
+        return nullptr;
+    }
+
+    Tracking* pResult = (Tracking*) malloc(sizeof(Tracking) * nMatchCount);
+    if (pResult == nullptr) {
+        free(pAllTracking);
+        *pCount = 0;
+        return nullptr;
+    }
+
+    int nIndex = 0;
+    for (int i = 0; i < nAllCount; i++) {
+        if (strcmp(pAllTracking[i].aName, pName) == 0) {
+            pResult[nIndex] = pAllTracking[i];
+            nIndex++;
+        }
+    }
+
+    free(pAllTracking);
+    *pCount = nMatchCount;
+    return pResult;
+}
+
+PointChange* queryAllPointChangeInfo(int* pCount)
+{
+    if (pCount == nullptr) {
+        return nullptr;
+    }
+
+    *pCount = 0;
+    const int nCount = getPointCount(MONEYPATH);
+    if (nCount <= 0) {
+        return nullptr;
+    }
+
+    PointChange* pPoints = (PointChange*) malloc(sizeof(PointChange) * nCount);
+    if (pPoints == nullptr) {
+        return nullptr;
+    }
+
+    const int nReadCount = readPoint(pPoints, MONEYPATH);
+    if (nReadCount <= 0) {
+        free(pPoints);
+        return nullptr;
+    }
+
+    int nActiveCount = 0;
+    for (int i = 0; i < nReadCount; i++) {
+        if (pPoints[i].nDel == 0) {
+            pPoints[nActiveCount] = pPoints[i];
+            nActiveCount++;
+        }
+    }
+
+    if (nActiveCount == 0) {
+        free(pPoints);
+        return nullptr;
+    }
+
+    *pCount = nActiveCount;
+    return pPoints;
+}
+
+PointChange* queryPointChangeInfoByAccount(const char* pName, int* pCount)
+{
+    if (pName == nullptr || pCount == nullptr) {
+        return nullptr;
+    }
+
+    int nAllCount = 0;
+    PointChange* pAllPoints = queryAllPointChangeInfo(&nAllCount);
+    if (pAllPoints == nullptr || nAllCount <= 0) {
+        return nullptr;
+    }
+
+    int nMatchCount = 0;
+    for (int i = 0; i < nAllCount; i++) {
+        if (strcmp(pAllPoints[i].aAccountName, pName) == 0) {
+            nMatchCount++;
+        }
+    }
+
+    if (nMatchCount == 0) {
+        free(pAllPoints);
+        *pCount = 0;
+        return nullptr;
+    }
+
+    PointChange* pResult = (PointChange*) malloc(sizeof(PointChange) * nMatchCount);
+    if (pResult == nullptr) {
+        free(pAllPoints);
+        *pCount = 0;
+        return nullptr;
+    }
+
+    int nIndex = 0;
+    for (int i = 0; i < nAllCount; i++) {
+        if (strcmp(pAllPoints[i].aAccountName, pName) == 0) {
+            pResult[nIndex] = pAllPoints[i];
+            nIndex++;
+        }
+    }
+
+    free(pAllPoints);
+    *pCount = nMatchCount;
+    return pResult;
 }
