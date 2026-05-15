@@ -126,6 +126,11 @@ int doRefundPointInfo(const char* pName, const char* pPwd, PointChangeRecord* pP
     return doRefundPoint(pName, pPwd, pPointInfo);
 }
 
+int doDonatePointInfo(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo)
+{
+    return doDonatePoint(pName, pPwd, pPointInfo);
+}
+
 int annulAccount(Account* pAccount)
 {
     if (pAccount == nullptr) {

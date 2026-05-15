@@ -9,5 +9,6 @@
 
 int doAddPoint(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
 int doRefundPoint(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
+int doDonatePoint(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
 
 #endif //CONTACTMANAGEMENTSYSTEM_POINTS_SERVICE_H

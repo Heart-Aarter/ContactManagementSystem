@@ -14,6 +14,7 @@ int startServiceInfo(const char* pName, const char* pPwd, Start* pInfo);
 int endServiceInfo(const char* pName, const char* pPwd, End* pInfo);
 int doAddPointInfo(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
 int doRefundPointInfo(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
+int doDonatePointInfo(const char* pName, const char* pPwd, PointChangeRecord* pPointInfo);
 int annulAccount(Account* pAccount);
 int getStatisticsInfo(StatisticsInfo* pInfo);
 

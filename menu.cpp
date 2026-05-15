@@ -483,7 +483,57 @@ void annul() {
 }
 
 void donate() {
-    printUnavailableFeature("物资捐赠");
+    showPageHeader("物资捐赠");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    float fAmount = 0;
+    float fPoint = 0;
+    PointChangeRecord pointInfo{};
+
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    cout << "请输入捐赠物资价值: ";
+    cin >> fAmount;
+    if (!cin || fAmount <= 0) {
+        resetInput();
+        cout << endl << "物资价值必须为正数。" << endl;
+        finishPage();
+        return;
+    }
+
+    fPoint = fAmount * POINT_RATE;
+    pointInfo.fChange = fPoint;
+    const int nResult = doDonatePointInfo(aName, aPwd, &pointInfo);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            cout << "物资捐赠失败，请检查账号和密码。" << endl;
+            break;
+        case TRUE:
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << "账号"
+                 << setw(16) << "物资价值"
+                 << setw(16) << "获得积分"
+                 << "当前积分" << endl;
+            cout << left
+                 << setw(ACCOUNT_NAME_MAX_LENGTH + 4) << pointInfo.aAccountName
+                 << setw(16) << fAmount
+                 << setw(16) << pointInfo.fChange
+                 << pointInfo.fBalance << endl;
+            break;
+        case UNUSE:
+            cout << "该账号正在服务或已注销，无法进行物资捐赠。" << endl;
+            break;
+        default:
+            cout << "物资捐赠发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
 }
 
 void aiAssistant() {
@@ -527,7 +577,7 @@ void statistics() {
     cout << "积分流水总数: " << info.nPointRecordCount << endl;
     cout << "手动获取积分合计: " << info.fAddedPoints << endl;
     cout << "使用积分合计: " << info.fUsedPoints << endl;
-    cout << "捐赠积分合计: " << info.fDonatedPoints << endl;
+    cout << "物资捐赠获得积分合计: " << info.fDonatedPoints << endl;
 
     finishPage();
 }
