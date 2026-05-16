@@ -10,8 +10,8 @@
 #include "global.h"
 
 typedef struct Account {
-    char aName[ACCOUNT_NAME_LENGTH];    // max 18 chars + '\0'
-    char aPwd[PASSWORD_LENGTH];         // max 8 chars + '\0'
+    char aName[ACCOUNT_NAME_LENGTH];
+    char aPwd[PASSWORD_LENGTH];
     int nStatus;
     time_t tStart;
     time_t tEnd;

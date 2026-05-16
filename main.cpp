@@ -14,48 +14,20 @@ int main() {
 
     do {
         clearScreen();
-        outputMenu();
+        cout << "========== 留守儿童关爱系统 ==========" << endl << endl;
+        cout << "1. 管理员登录" << endl;
+        cout << "2. 用户入口" << endl;
+        cout << "0. 退出系统" << endl << endl;
 
-        if (readMenuSelection("请选择操作(0~13): ", 0, 13, &nSelection)) {
+        if (readMenuSelection("请选择登录方式(0~2): ", 0, 2, &nSelection)) {
             switch (nSelection) {
                 case 1:
-                    add();
+                    if (adminLogin()) {
+                        adminMainMenu();
+                    }
                     break;
                 case 2:
-                    query();
-                    break;
-                case 3:
-                    logon();
-                    break;
-                case 4:
-                    settle();
-                    break;
-                case 5:
-                    addMoney();
-                    break;
-                case 6:
-                    refundMoney();
-                    break;
-                case 7:
-                    annul();
-                    break;
-                case 8:
-                    donate();
-                    break;
-                case 9:
-                    aiAssistant();
-                    break;
-                case 10:
-                    statistics();
-                    break;
-                case 11:
-                    serviceRecords();
-                    break;
-                case 12:
-                    pointRecords();
-                    break;
-                case 13:
-                    helpPage();
+                    userEntryMenu();
                     break;
                 case 0:
                     exitApp();

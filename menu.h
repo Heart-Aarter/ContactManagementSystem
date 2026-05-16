@@ -6,6 +6,11 @@
 #define CONTACTMANAGEMENTSYSTEM_MENU_H
 
 void outputMenu();
+void adminMainMenu();
+void userEntryMenu();
+void userMainMenu(const char* pLoginName);
+bool adminLogin();
+bool userLogin(char* pName, int nNameSize);
 void add();
 void query();
 void logon();
