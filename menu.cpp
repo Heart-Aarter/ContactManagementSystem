@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 
+#include "account_service.h"
 #include "global.h"
 #include "large_model.h"
 #include "menu.h"
@@ -192,23 +193,563 @@ void printOperationFailed(const char* pAction) {
 
 }
 
-void outputMenu() {
-    cout << "========== 留守儿童关爱系统 ==========" << endl << endl;
-    printOverview();
-    cout << "1. 注册志愿者" << endl;
-    cout << "2. 查询志愿者" << endl;
-    cout << "3. 开始服务" << endl;
-    cout << "4. 结束服务" << endl;
-    cout << "5. 获取积分" << endl;
-    cout << "6. 使用积分" << endl;
-    cout << "7. 注销账号" << endl;
-    cout << "8. 物资捐赠" << endl;
-    cout << "9. AI 助手" << endl;
-    cout << "10. 统计查询" << endl;
-    cout << "11. 服务记录查询" << endl;
-    cout << "12. 积分流水查询" << endl;
-    cout << "13. 使用帮助/规则说明" << endl;
-    cout << "0. 退出系统" << endl << endl;
+namespace {
+
+bool inputOperationAccount(const char* pFixedName, char* pName, int nNameSize, char* pPwd, int nPwdSize) {
+    int nIndex = -1;
+
+    if (pName == nullptr || pPwd == nullptr || nNameSize <= 0 || nPwdSize <= 0) {
+        return false;
+    }
+
+    if (pFixedName == nullptr) {
+        return inputAccountAndPassword(pName, nNameSize, pPwd, nPwdSize);
+    }
+
+    if (pFixedName[0] == '\0') {
+        cout << "当前登录信息无效，请重新登录。" << endl;
+        finishPage();
+        return false;
+    }
+
+    memset(pName, 0, nNameSize);
+    strncpy(pName, pFixedName, nNameSize - 1);
+
+    cout << "当前账号: " << pName << endl;
+    getPwdOnce(pPwd);
+    if (!validatePassword(pPwd)) {
+        return false;
+    }
+
+    if (checkAccount(pName, pPwd, &nIndex) == nullptr) {
+        cout << endl << "密码错误或账号状态不可用，请重新确认。" << endl;
+        finishPage();
+        return false;
+    }
+
+    return true;
+}
+
+void doLogon(const char* pFixedName) {
+    showPageHeader("开始服务");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    Start info{};
+    char aTime[TIMELENGTH] = {0};
+
+    if (!inputOperationAccount(pFixedName, aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    const int nResult = startServiceInfo(aName, aPwd, &info);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("开始服务");
+            break;
+        case TRUE:
+            timeToString(info.tLogon, aTime);
+            cout << "开始服务成功。" << endl << endl;
+            cout << "账号: " << info.aName << endl;
+            cout << "当前积分: ";
+            printMoney((float) info.fBalance);
+            cout << endl;
+            cout << "开始时间: " << aTime << endl;
+            cout << "下一步: 服务结束后返回菜单选择结束服务。" << endl;
+            break;
+        case UNUSE:
+            cout << "开始服务失败。该账号正在服务或已注销。" << endl;
+            break;
+        case ENOUGHMONEY:
+            cout << "开始服务失败。账号积分不足。" << endl;
+            break;
+        default:
+            cout << "开始服务发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+}
+
+void doSettle(const char* pFixedName) {
+    showPageHeader("结束服务");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    End info{};
+    char aStartTime[TIMELENGTH] = {0};
+    char aEndTime[TIMELENGTH] = {0};
+
+    if (!inputOperationAccount(pFixedName, aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    const int nResult = endServiceInfo(aName, aPwd, &info);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("结束服务");
+            break;
+        case TRUE:
+            timeToString(info.tStart, aStartTime);
+            timeToString(info.tEnd, aEndTime);
+            cout << "结束服务成功。" << endl << endl;
+            cout << "账号: " << info.aName << endl;
+            cout << "本次获得积分: ";
+            printMoney(info.fAmount);
+            cout << endl;
+            cout << "当前积分: ";
+            printMoney(info.fBalance);
+            cout << endl;
+            cout << "开始时间: " << aStartTime << endl;
+            cout << "结束时间: " << aEndTime << endl;
+            break;
+        case UNUSE:
+            cout << "结束服务失败。该账号当前没有正在进行的服务。" << endl;
+            break;
+        case ENOUGHMONEY:
+            cout << "结束服务失败。账号积分不足。" << endl;
+            break;
+        default:
+            cout << "结束服务发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+}
+
+void doAddMoney(const char* pFixedName) {
+    showPageHeader("获取积分");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    float fAmount = 0;
+    PointChangeRecord pointInfo{};
+
+    if (!inputOperationAccount(pFixedName, aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    if (!readPositiveFloat("请输入获取积分数量: ", &fAmount, "积分数量")) {
+        finishPage();
+        return;
+    }
+
+    pointInfo.fChange = fAmount;
+    const int nResult = doAddPointInfo(aName, aPwd, &pointInfo);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("获取积分");
+            break;
+        case TRUE:
+            cout << "获取积分成功。" << endl;
+            cout << "账号: " << pointInfo.aAccountName << endl;
+            cout << "本次获取积分: ";
+            printMoney(pointInfo.fChange);
+            cout << endl;
+            cout << "当前积分: ";
+            printMoney(pointInfo.fBalance);
+            cout << endl;
+            break;
+        case UNUSE:
+            cout << "获取积分失败。该账号正在服务或已注销。" << endl;
+            break;
+        default:
+            cout << "获取积分发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+}
+
+void doRefundMoney(const char* pFixedName) {
+    showPageHeader("使用积分");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    float fAmount = 0;
+    PointChangeRecord pointInfo{};
+
+    if (!inputOperationAccount(pFixedName, aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    if (!readPositiveFloat("请输入使用积分数量: ", &fAmount, "积分数量")) {
+        finishPage();
+        return;
+    }
+
+    pointInfo.fChange = fAmount;
+    const int nResult = doRefundPointInfo(aName, aPwd, &pointInfo);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("使用积分");
+            break;
+        case TRUE:
+            cout << "使用积分成功。" << endl;
+            cout << "账号: " << pointInfo.aAccountName << endl;
+            cout << "本次使用积分: ";
+            printMoney(pointInfo.fChange);
+            cout << endl;
+            cout << "剩余积分: ";
+            printMoney(pointInfo.fBalance);
+            cout << endl;
+            cout << "积分折合为 ";
+            printMoney(pointInfo.fChange / 10.0f);
+            cout << " 元。" << endl;
+            break;
+        case UNUSE:
+            cout << "使用积分失败。该账号正在服务或已注销。" << endl;
+            break;
+        case ENOUGHMONEY:
+            cout << "使用积分失败。账号积分不足。" << endl;
+            break;
+        default:
+            cout << "使用积分发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+}
+
+void doDonate(const char* pFixedName) {
+    showPageHeader("物资捐赠");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    float fAmount = 0;
+    float fPoint = 0;
+    PointChangeRecord pointInfo{};
+
+    if (!inputOperationAccount(pFixedName, aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return;
+    }
+
+    if (!readPositiveFloat("请输入捐赠金额: ", &fAmount, "捐赠金额")) {
+        finishPage();
+        return;
+    }
+
+    fPoint = fAmount * (float) POINT_RATE;
+    pointInfo.fChange = fPoint;
+    const int nResult = doDonatePointInfo(aName, aPwd, &pointInfo);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("物资捐赠");
+            break;
+        case TRUE:
+            cout << "物资捐赠成功。" << endl;
+            cout << "账号: " << pointInfo.aAccountName << endl;
+            cout << "捐赠金额: ";
+            printMoney(fAmount);
+            cout << endl;
+            cout << "获得积分: ";
+            printMoney(pointInfo.fChange);
+            cout << endl;
+            cout << "当前积分: ";
+            printMoney(pointInfo.fBalance);
+            cout << endl;
+            break;
+        case UNUSE:
+            cout << "物资捐赠失败。该账号正在服务或已注销。" << endl;
+            break;
+        default:
+            cout << "物资捐赠发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+}
+
+bool doAnnul(const char* pFixedName) {
+    showPageHeader(pFixedName == nullptr ? "注销账号" : "注销本人账号");
+
+    Account account{};
+
+    if (!inputOperationAccount(pFixedName, account.aName, sizeof(account.aName), account.aPwd, sizeof(account.aPwd))) {
+        return false;
+    }
+
+    if (!confirmAction("确认注销该账号")) {
+        cout << endl << "已取消注销。" << endl;
+        finishPage();
+        return false;
+    }
+
+    const int nResult = annulAccount(&account);
+
+    cout << endl;
+    switch (nResult) {
+        case FALSE:
+            printOperationFailed("注销账号");
+            break;
+        case TRUE:
+            cout << "注销账号成功。" << endl;
+            cout << "账号: " << account.aName << endl;
+            cout << "清退积分: ";
+            printMoney(account.fBalance);
+            cout << endl;
+            finishPage();
+            return true;
+        case UNUSE:
+            cout << "注销账号失败。该账号正在服务或已注销。" << endl;
+            break;
+        default:
+            cout << "注销账号发生未知错误。" << endl;
+            break;
+    }
+
+    finishPage();
+    return false;
+}
+
+void showServiceRecordResult(Tracking* pTracking, int nCount) {
+    cout << endl;
+    if (pTracking == nullptr || nCount == 0) {
+        printEmptyHint("当前没有符合条件的服务记录。", "可先完成一次开始服务和结束服务流程。");
+        finishPage();
+        return;
+    }
+
+    printTrackingTable(pTracking, nCount);
+    free(pTracking);
+    finishPage();
+}
+
+void showPointRecordResult(PointChange* pPoints, int nCount) {
+    cout << endl;
+    if (pPoints == nullptr || nCount == 0) {
+        printEmptyHint("当前没有符合条件的积分流水。", "可先获取积分、使用积分或完成物资捐赠。");
+        finishPage();
+        return;
+    }
+
+    printPointTable(pPoints, nCount);
+    free(pPoints);
+    finishPage();
+}
+
+void showServiceRecordsByAccount(const char* pName) {
+    int nCount = 0;
+    showServiceRecordResult(queryTrackingInfoByAccount(pName, &nCount), nCount);
+}
+
+void showPointRecordsByAccount(const char* pName) {
+    int nCount = 0;
+    showPointRecordResult(queryPointChangeInfoByAccount(pName, &nCount), nCount);
+}
+
+}
+
+bool adminLogin() {
+    const char ADMIN_NAME[] = "admin";
+    const char ADMIN_PASSWORD[] = "123456";
+
+    showPageHeader("管理员登录");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+
+    if (!inputBoundedText("请输入管理员账号: ", aName, sizeof(aName), ACCOUNT_NAME_MAX_LENGTH)) {
+        return false;
+    }
+
+    getPwdOnce(aPwd);
+    if (!validatePassword(aPwd)) {
+        return false;
+    }
+
+    if (strcmp(aName, ADMIN_NAME) != 0 || strcmp(aPwd, ADMIN_PASSWORD) != 0) {
+        cout << endl << "管理员账号或密码错误。" << endl;
+        finishPage();
+        return false;
+    }
+
+    cout << endl << "管理员登录成功。" << endl;
+    finishPage();
+    return true;
+}
+
+bool userLogin(char* pName, int nNameSize) {
+    showPageHeader("用户登录");
+
+    char aName[ACCOUNT_NAME_LENGTH] = {0};
+    char aPwd[PASSWORD_LENGTH] = {0};
+    int nIndex = -1;
+
+    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
+        return false;
+    }
+
+    Account* pAccount = checkAccount(aName, aPwd, &nIndex);
+    if (pAccount == nullptr || pAccount->nDel != 0 || pAccount->nStatus == 2) {
+        cout << endl << "用户账号或密码错误，或账号已注销。" << endl;
+        finishPage();
+        return false;
+    }
+
+    memset(pName, 0, nNameSize);
+    strncpy(pName, aName, nNameSize - 1);
+
+    cout << endl << "用户登录成功。" << endl;
+    finishPage();
+    return true;
+}
+
+void adminMainMenu() {
+    int nSelection = -1;
+
+    do {
+        clearScreen();
+        cout << "========== 管理员菜单 ==========" << endl << endl;
+        printOverview();
+        cout << "1. 注册志愿者" << endl;
+        cout << "2. 查询志愿者" << endl;
+        cout << "3. 统计查询" << endl;
+        cout << "4. 服务记录查询" << endl;
+        cout << "5. 积分流水查询" << endl;
+        cout << "6. 注销账号" << endl;
+        cout << "7. 使用帮助/规则说明" << endl;
+        cout << "0. 退出登录" << endl << endl;
+
+        if (readMenuSelection("请选择管理员功能(0~7): ", 0, 7, &nSelection)) {
+            switch (nSelection) {
+                case 1:
+                    add();
+                    break;
+                case 2:
+                    query();
+                    break;
+                case 3:
+                    statistics();
+                    break;
+                case 4:
+                    serviceRecords();
+                    break;
+                case 5:
+                    pointRecords();
+                    break;
+                case 6:
+                    annul();
+                    break;
+                case 7:
+                    helpPage();
+                    break;
+                case 0:
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            finishPage();
+        }
+    } while (nSelection != 0);
+}
+
+void userEntryMenu() {
+    int nSelection = -1;
+    char aLoginName[ACCOUNT_NAME_LENGTH] = {0};
+
+    do {
+        clearScreen();
+        cout << "========== 用户入口 ==========" << endl << endl;
+        cout << "1. 注册志愿者" << endl;
+        cout << "2. 登录账号" << endl;
+        cout << "0. 返回上一级" << endl << endl;
+
+        if (readMenuSelection("请选择用户功能(0~2): ", 0, 2, &nSelection)) {
+            switch (nSelection) {
+                case 1:
+                    add();
+                    break;
+                case 2:
+                    memset(aLoginName, 0, sizeof(aLoginName));
+                    if (userLogin(aLoginName, sizeof(aLoginName))) {
+                        userMainMenu(aLoginName);
+                    }
+                    break;
+                case 0:
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            finishPage();
+        }
+    } while (nSelection != 0);
+}
+
+void userMainMenu(const char* pLoginName) {
+    int nSelection = -1;
+
+    do {
+        clearScreen();
+        cout << "========== 用户菜单 ==========" << endl << endl;
+        cout << "当前账号: " << pLoginName << endl << endl;
+        cout << "1. 开始服务" << endl;
+        cout << "2. 结束服务" << endl;
+        cout << "3. 获取积分" << endl;
+        cout << "4. 使用积分" << endl;
+        cout << "5. 物资捐赠" << endl;
+        cout << "6. 注销本人账号" << endl;
+        cout << "7. 查看本人服务记录" << endl;
+        cout << "8. 查看本人积分流水" << endl;
+        cout << "9. AI 助手" << endl;
+        cout << "10. 使用帮助/规则说明" << endl;
+        cout << "0. 退出登录" << endl << endl;
+
+        if (readMenuSelection("请选择用户功能(0~10): ", 0, 10, &nSelection)) {
+            switch (nSelection) {
+                case 1:
+                    doLogon(pLoginName);
+                    break;
+                case 2:
+                    doSettle(pLoginName);
+                    break;
+                case 3:
+                    doAddMoney(pLoginName);
+                    break;
+                case 4:
+                    doRefundMoney(pLoginName);
+                    break;
+                case 5:
+                    doDonate(pLoginName);
+                    break;
+                case 6:
+                    if (doAnnul(pLoginName)) {
+                        nSelection = 0;
+                    }
+                    break;
+                case 7:
+                    showServiceRecordsByAccount(pLoginName);
+                    break;
+                case 8:
+                    showPointRecordsByAccount(pLoginName);
+                    break;
+                case 9:
+                    aiAssistant();
+                    break;
+                case 10:
+                    helpPage();
+                    break;
+                case 0:
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            finishPage();
+        }
+    } while (nSelection != 0);
 }
 
 void add() {
@@ -317,283 +858,27 @@ void query() {
 }
 
 void logon() {
-    showPageHeader("开始服务");
-
-    char aName[ACCOUNT_NAME_LENGTH] = {0};
-    char aPwd[PASSWORD_LENGTH] = {0};
-    Start info{};
-    char aTime[TIMELENGTH] = {0};
-
-    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
-        return;
-    }
-
-    const int nResult = startServiceInfo(aName, aPwd, &info);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("开始服务");
-            break;
-        case TRUE:
-            timeToString(info.tLogon, aTime);
-            cout << "开始服务成功。" << endl << endl;
-            cout << "账号: " << info.aName << endl;
-            cout << "当前积分: ";
-            printMoney((float) info.fBalance);
-            cout << endl;
-            cout << "开始时间: " << aTime << endl;
-            cout << "下一步: 服务结束后返回主菜单选择 4 结算积分。" << endl;
-            break;
-        case UNUSE:
-            cout << "开始服务失败。该账号正在服务或已注销。" << endl;
-            break;
-        case ENOUGHMONEY:
-            cout << "开始服务失败。账号积分不足。" << endl;
-            break;
-        default:
-            cout << "开始服务发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doLogon(nullptr);
 }
 
 void settle() {
-    showPageHeader("结束服务");
-
-    char aName[ACCOUNT_NAME_LENGTH] = {0};
-    char aPwd[PASSWORD_LENGTH] = {0};
-    End info{};
-    char aStartTime[TIMELENGTH] = {0};
-    char aEndTime[TIMELENGTH] = {0};
-
-    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
-        return;
-    }
-
-    const int nResult = endServiceInfo(aName, aPwd, &info);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("结束服务");
-            break;
-        case TRUE:
-            timeToString(info.tStart, aStartTime);
-            timeToString(info.tEnd, aEndTime);
-            cout << "结束服务成功。" << endl << endl;
-            cout << "账号: " << info.aName << endl;
-            cout << "本次获得积分: ";
-            printMoney(info.fAmount);
-            cout << endl;
-            cout << "当前积分: ";
-            printMoney(info.fBalance);
-            cout << endl;
-            cout << "开始时间: " << aStartTime << endl;
-            cout << "结束时间: " << aEndTime << endl;
-            break;
-        case UNUSE:
-            cout << "结束服务失败。该账号当前没有正在进行的服务。" << endl;
-            break;
-        case ENOUGHMONEY:
-            cout << "结束服务失败。账号积分不足。" << endl;
-            break;
-        default:
-            cout << "结束服务发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doSettle(nullptr);
 }
 
 void addMoney() {
-    showPageHeader("获取积分");
-
-    char aName[ACCOUNT_NAME_LENGTH] = {0};
-    char aPwd[PASSWORD_LENGTH] = {0};
-    float fAmount = 0;
-    PointChangeRecord pointInfo{};
-
-    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
-        return;
-    }
-
-    if (!readPositiveFloat("请输入获取积分数量: ", &fAmount, "积分数量")) {
-        finishPage();
-        return;
-    }
-
-    pointInfo.fChange = fAmount;
-    const int nResult = doAddPointInfo(aName, aPwd, &pointInfo);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("获取积分");
-            break;
-        case TRUE:
-            cout << "获取积分成功。" << endl;
-            cout << "账号: " << pointInfo.aAccountName << endl;
-            cout << "本次获取积分: ";
-            printMoney(pointInfo.fChange);
-            cout << endl;
-            cout << "当前积分: ";
-            printMoney(pointInfo.fBalance);
-            cout << endl;
-            break;
-        case UNUSE:
-            cout << "获取积分失败。该账号正在服务或已注销。" << endl;
-            break;
-        default:
-            cout << "获取积分发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doAddMoney(nullptr);
 }
 
 void refundMoney() {
-    showPageHeader("使用积分");
-
-    char aName[ACCOUNT_NAME_LENGTH] = {0};
-    char aPwd[PASSWORD_LENGTH] = {0};
-    float fAmount = 0;
-    PointChangeRecord pointInfo{};
-
-    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
-        return;
-    }
-
-    if (!readPositiveFloat("请输入使用积分数量: ", &fAmount, "积分数量")) {
-        finishPage();
-        return;
-    }
-
-    pointInfo.fChange = fAmount;
-    const int nResult = doRefundPointInfo(aName, aPwd, &pointInfo);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("使用积分");
-            break;
-        case TRUE:
-            cout << "使用积分成功。" << endl;
-            cout << "账号: " << pointInfo.aAccountName << endl;
-            cout << "本次使用积分: ";
-            printMoney(pointInfo.fChange);
-            cout << endl;
-            cout << "剩余积分: ";
-            printMoney(pointInfo.fBalance);
-            cout << endl;
-            cout << "积分折合为 ";
-            printMoney(pointInfo.fChange / 10.0f);
-            cout << " 元，已捐赠。" << endl;
-            break;
-        case UNUSE:
-            cout << "使用积分失败。该账号正在服务或已注销。" << endl;
-            break;
-        case ENOUGHMONEY:
-            cout << "使用积分失败。账号积分不足，请先获取积分或减少使用数量。" << endl;
-            break;
-        default:
-            cout << "使用积分发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doRefundMoney(nullptr);
 }
 
 void annul() {
-    showPageHeader("注销账号");
-
-    Account account{};
-
-    if (!inputAccountAndPassword(account.aName, sizeof(account.aName), account.aPwd, sizeof(account.aPwd))) {
-        return;
-    }
-
-    if (!confirmAction("注销后账号不可恢复，确认注销吗？")) {
-        cout << endl << "已取消注销。" << endl;
-        finishPage();
-        return;
-    }
-
-    const int nResult = annulAccount(&account);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("注销账号");
-            break;
-        case TRUE:
-            cout << "注销账号成功。" << endl;
-            cout << "账号: " << account.aName << endl;
-            cout << "退还积分: ";
-            printMoney(account.fBalance);
-            cout << endl;
-            break;
-        case UNUSE:
-            cout << "注销账号失败。该账号正在服务或已注销。" << endl;
-            break;
-        default:
-            cout << "注销账号发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doAnnul(nullptr);
 }
 
 void donate() {
-    showPageHeader("物资捐赠");
-
-    char aName[ACCOUNT_NAME_LENGTH] = {0};
-    char aPwd[PASSWORD_LENGTH] = {0};
-    float fAmount = 0;
-    float fPoint = 0;
-    PointChangeRecord pointInfo{};
-
-    if (!inputAccountAndPassword(aName, sizeof(aName), aPwd, sizeof(aPwd))) {
-        return;
-    }
-
-    if (!readPositiveFloat("请输入捐赠物资价值: ", &fAmount, "物资价值")) {
-        finishPage();
-        return;
-    }
-
-    fPoint = fAmount * (float) POINT_RATE;
-    pointInfo.fChange = fPoint;
-    const int nResult = doDonatePointInfo(aName, aPwd, &pointInfo);
-
-    cout << endl;
-    switch (nResult) {
-        case FALSE:
-            printOperationFailed("物资捐赠");
-            break;
-        case TRUE:
-            cout << "物资捐赠登记成功。" << endl;
-            cout << "账号: " << pointInfo.aAccountName << endl;
-            cout << "物资价值: ";
-            printMoney(fAmount);
-            cout << endl;
-            cout << "获得积分: ";
-            printMoney(pointInfo.fChange);
-            cout << endl;
-            cout << "当前积分: ";
-            printMoney(pointInfo.fBalance);
-            cout << endl;
-            break;
-        case UNUSE:
-            cout << "物资捐赠失败。该账号正在服务或已注销。" << endl;
-            break;
-        default:
-            cout << "物资捐赠发生未知错误。" << endl;
-            break;
-    }
-
-    finishPage();
+    doDonate(nullptr);
 }
 
 void aiAssistant() {
@@ -682,16 +967,7 @@ void serviceRecords() {
         pTracking = queryAllTrackingInfo(&nCount);
     }
 
-    cout << endl;
-    if (pTracking == nullptr || nCount == 0) {
-        printEmptyHint("当前没有符合条件的服务记录。", "可先完成一次开始服务和结束服务流程。");
-        finishPage();
-        return;
-    }
-
-    printTrackingTable(pTracking, nCount);
-    free(pTracking);
-    finishPage();
+    showServiceRecordResult(pTracking, nCount);
 }
 
 void pointRecords() {
@@ -716,16 +992,7 @@ void pointRecords() {
         pPoints = queryAllPointChangeInfo(&nCount);
     }
 
-    cout << endl;
-    if (pPoints == nullptr || nCount == 0) {
-        printEmptyHint("当前没有符合条件的积分流水。", "可先获取积分、使用积分或登记物资捐赠。");
-        finishPage();
-        return;
-    }
-
-    printPointTable(pPoints, nCount);
-    free(pPoints);
-    finishPage();
+    showPointRecordResult(pPoints, nCount);
 }
 
 void helpPage() {
